@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">videovault</string>
+    <string name="alt_description">Review your recordings</string>
+    <string name="description">Add Recording to Start</string>
+    <string name="enable_permissions_to_record_video">Enable Permissions to Record Video</string>
+    <string name="recording_finished_successfully">Recording finished successfully</string>
+    <string name="failed_to_prepare_file">Failed to prepare file</string>
+    <string name="failed_to_save_video_details">Failed to save video details</string>
+    <string name="recording_stopped_successfully">Recording stopped successfully</string>
+    <string name="add_recording">Add Recording</string>
+</resources>
