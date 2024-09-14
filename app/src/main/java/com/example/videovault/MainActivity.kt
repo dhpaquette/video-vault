@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.videovault.ui.components.CameraScreen
 import com.example.videovault.ui.components.HomeScreen
+import com.example.videovault.ui.components.VideoVaultApp
 import com.example.videovault.ui.theme.VideoVaultTheme
 import com.example.videovault.util.Util
 import com.example.videovault.util.Util.hasPermissions
@@ -23,11 +24,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             VideoVaultTheme {
-                val navController = rememberNavController()
-                NavHost(navController = navController, startDestination = Destination.HomeDestination.route) {
-                    composable(Destination.HomeDestination.route) { HomeScreen(navController) }
-                    composable(Destination.CameraDestination.route) { CameraScreen(navController) }
-                }
+                VideoVaultApp()
             }
         }
     }
