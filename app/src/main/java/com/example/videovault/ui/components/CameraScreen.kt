@@ -34,6 +34,7 @@ fun CameraScreen(
     viewModel: RecordingsViewModel = hiltViewModel()
 ) {
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
+    val isStoppingRecording by viewModel.isStoppingRecording.collectAsStateWithLifecycle()
 
 
     val appContext = LocalContext.current.applicationContext
@@ -49,6 +50,16 @@ fun CameraScreen(
             Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
         }
     }
+    LaunchedEffect(key1 = true) {
+        viewModel.recordingSavedEvents.collect {
+            navController.navigate(Destination.HomeDestination.route) {
+                popUpTo(Destination.CameraDestination.route) {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -57,20 +68,27 @@ fun CameraScreen(
 
         CameraPreview(controller)
         Button(
+            enabled = !isStoppingRecording,
             onClick = {
                 if (isRecording) {
                     viewModel.stopRecording()
-                    navController.navigate(Destination.HomeDestination.route)
                 } else {
                     viewModel.startRecording(appContext, controller)
                 }
             },
             colors = ButtonDefaults.buttonColors(
-               containerColor = if (isRecording) Color.Red else Color.Green
+               containerColor = if (isRecording) Color.Red else Color.Green,
+               disabledContainerColor = Color.Gray
             ),
             shape = RectangleShape
         ) {
-            Text(text = if (isRecording) "Stop Recording" else "Start Recording")
+            Text(
+                text = when {
+                    isStoppingRecording -> "Saving..."
+                    isRecording -> "Stop Recording"
+                    else -> "Start Recording"
+                }
+            )
         }
     }
 }

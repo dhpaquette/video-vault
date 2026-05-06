@@ -27,6 +27,7 @@ class RecordingServiceImpl @Inject constructor() : RecordingService {
             ) { event ->
                 when (event) {
                     is VideoRecordEvent.Finalize -> {
+                        currentRecording = null
                         if (event.hasError()) {
                             onError("Error during recording")
                         } else {
@@ -40,11 +41,14 @@ class RecordingServiceImpl @Inject constructor() : RecordingService {
             onError("Failed to start recording: ${e.localizedMessage}")
         }
     }
-    override fun stopRecording(onStopped: () -> Unit, onError: (String) -> Unit) {
+    override fun stopRecording(onError: (String) -> Unit) {
         try {
-            currentRecording?.stop()
-            currentRecording = null
-            onStopped()
+            val recording = currentRecording
+            if (recording == null) {
+                onError("No active recording to stop")
+                return
+            }
+            recording.stop()
         } catch (e: Exception) {
             onError("Failed to stop recording: ${e.localizedMessage}")
         }

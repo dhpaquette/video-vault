@@ -11,7 +11,7 @@ interface VideoRecordingRepository {
 
         suspend fun insert(videoRecording: VideoRecording)
 
-        suspend fun deleteById(id: Int)
+        suspend fun deleteRecording(videoRecording: VideoRecording): DeleteRecordingResult
 
         suspend fun prepareFile(context: Context): Result<File>
 
