@@ -7,5 +7,7 @@
     <string name="failed_to_prepare_file">Failed to prepare file</string>
     <string name="failed_to_save_video_details">Failed to save video details</string>
     <string name="recording_stopped_successfully">Recording stopped successfully</string>
+    <string name="failed_to_delete_recording">Failed to delete recording</string>
+    <string name="recording_file_cleanup_failed">Recording removed, but the video file could not be deleted</string>
     <string name="add_recording">Add Recording</string>
 </resources>

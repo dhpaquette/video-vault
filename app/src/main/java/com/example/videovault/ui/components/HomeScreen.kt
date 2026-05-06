@@ -29,11 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,8 +114,12 @@ fun Screen(
     val recordings by recordingsViewModel.recordings.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var selectedRecording by remember { mutableStateOf<VideoRecording?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(recordingsViewModel, snackbarHostState) {
+        recordingsViewModel.uiMessages.collect { uiMessage ->
+            snackbarHostState.showSnackbar(uiMessage.asString(context))
+        }
+    }
 
     // Dialog to confirm deleting recording
     if (showDialog) {
@@ -126,7 +130,7 @@ fun Screen(
             confirmButton = {
                 TextButton(onClick = {
                     selectedRecording?.let {
-                        recordingsViewModel.deleteRecording(it.id)
+                        recordingsViewModel.deleteRecording(it)
                         showDialog = false
                     }
                 }) {
@@ -269,4 +273,3 @@ fun HomeScreenPreview() {
         HomeScreen(navController = previewNavController())
     }
 }
-

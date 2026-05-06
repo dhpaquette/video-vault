@@ -2,7 +2,6 @@ package com.example.videovault.viewmodel
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import androidx.camera.view.LifecycleCameraController
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +9,8 @@ import com.example.videovault.R
 import com.example.videovault.data.service.RecordingService
 import com.example.videovault.UiMessage
 import com.example.videovault.data.model.VideoRecording
+import com.example.videovault.data.repository.DeleteRecordingResult
+import com.example.videovault.data.repository.FileDeleteOutcome
 import com.example.videovault.data.repository.VideoRecordingRepository
 import com.example.videovault.util.Util
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,17 +31,22 @@ class RecordingsViewModel @Inject constructor(
     private val recordingService: RecordingService
 ) : ViewModel() {
 
-    private val uiMessageChannel = Channel<UiMessage>()
+    private val uiMessageChannel = Channel<UiMessage>(Channel.BUFFERED)
     val uiMessages = uiMessageChannel.receiveAsFlow()
+
+    private val recordingSavedChannel = Channel<Unit>(Channel.BUFFERED)
+    val recordingSavedEvents = recordingSavedChannel.receiveAsFlow()
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
+
+    private val _isStoppingRecording = MutableStateFlow(false)
+    val isStoppingRecording: StateFlow<Boolean> = _isStoppingRecording.asStateFlow()
 
     private val _recordings = MutableStateFlow<List<VideoRecording>>(emptyList())
     val recordings: StateFlow<List<VideoRecording>> = _recordings.asStateFlow()
 
     init {
-        print("Reaches init")
         loadRecordings()
     }
     fun loadRecordings() {
@@ -71,32 +77,26 @@ class RecordingsViewModel @Inject constructor(
             val outputFileResult = repository.prepareFile(context)
             outputFileResult.fold(
                 onSuccess = { outputFile ->
-                    println("Reaches onSuccess")
-                    _isRecording.value = true
                     recordingService.startRecording(
                         controller,
                         outputFile,
                         context,
                         onStart = {
+                            _isRecording.value = true
+                            _isStoppingRecording.value = false
                         },
                         onError = { error: String ->
+                            resetRecordingState()
                             sendUiMessage(
                                 UiMessage.DynamicMessage(error)
                             )
                         },
                         onFinish = {
-                            sendUiMessage(
-                                UiMessage.StringResource(
-                                    R.string.recording_finished_successfully
-                                )
-                            )
                             saveRecordingDetails(outputFile)
                         }
                     )
                 },
-                onFailure = { error ->
-
-                    println("Reaches onFailure")
+                onFailure = {
                     sendUiMessage(
                         UiMessage.StringResource(
                             R.string.failed_to_prepare_file
@@ -109,15 +109,23 @@ class RecordingsViewModel @Inject constructor(
     private fun saveRecordingDetails(file: File) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                Log.d("deletionTest", repository.getMaxCounter().toString())
+                val nextCounter = repository.getMaxCounter() + 1
                 val videoRecording = VideoRecording(
-                    counter = repository.getMaxCounter() + 1,
+                    counter = nextCounter,
                     recordingName = file.name,
                     filePath = file.absolutePath,
                     videoSize = (file.length() / (1024.0* 1024.0))
                 )
                 repository.insert(videoRecording)
+                resetRecordingState()
+                sendUiMessage(
+                    UiMessage.StringResource(
+                        R.string.recording_finished_successfully
+                    )
+                )
+                recordingSavedChannel.send(Unit)
             } catch (e: Exception) {
+                resetRecordingState()
                 sendUiMessage(
                     UiMessage.StringResource(
                         R.string.failed_to_save_video_details
@@ -127,26 +135,43 @@ class RecordingsViewModel @Inject constructor(
         }
     }
     fun stopRecording() {
-        if (!_isRecording.value) {
+        if (!_isRecording.value || _isStoppingRecording.value) {
             return
         }
-        recordingService.stopRecording(onStopped = {
-            sendUiMessage(
-                UiMessage.StringResource(
-                    R.string.recording_stopped_successfully
-                )
-            )
-            _isRecording.value = false
-        }, onError = { error ->
+        _isStoppingRecording.value = true
+        recordingService.stopRecording(onError = { error ->
+            resetRecordingState()
             sendUiMessage(
                 UiMessage.DynamicMessage(error)
             )
-            _isRecording.value = false
         })
     }
-    fun deleteRecording(recordingId: Int) {
+
+    fun deleteRecording(videoRecording: VideoRecording) {
         viewModelScope.launch {
-            repository.deleteById(recordingId)
+            when (val result = repository.deleteRecording(videoRecording)) {
+                is DeleteRecordingResult.Success -> {
+                    if (result.fileDeleteOutcome == FileDeleteOutcome.Failed) {
+                        sendUiMessage(
+                            UiMessage.StringResource(
+                                R.string.recording_file_cleanup_failed
+                            )
+                        )
+                    }
+                }
+                is DeleteRecordingResult.DatabaseFailure -> {
+                    sendUiMessage(
+                        UiMessage.StringResource(
+                            R.string.failed_to_delete_recording
+                        )
+                    )
+                }
+            }
         }
+    }
+
+    private fun resetRecordingState() {
+        _isRecording.value = false
+        _isStoppingRecording.value = false
     }
 }
